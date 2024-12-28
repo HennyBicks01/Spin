@@ -43,6 +43,8 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   bool isSpinning = false;
   late final StreamController<int> _selected;
   final _uuid = const Uuid();
+  int? selectedIndex;
+  StreamSubscription<int>? _subscription;
 
   List<SpinnerStyle> predefinedStyles = [
     SpinnerStyle(
@@ -163,6 +165,13 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     super.initState();
     _selected = StreamController<int>.broadcast();
     _loadSpinners();
+  }
+
+  @override
+  void dispose() {
+    _selected.close();
+    _subscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadSpinners() async {
@@ -600,6 +609,13 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     if (!isSpinning && currentSpinner!.items.length >= 2) {
       setState(() {
         isSpinning = true;
+        selectedIndex = null;
+      });
+      _subscription?.cancel();
+      _subscription = _selected.stream.listen((value) {
+        setState(() {
+          selectedIndex = value;
+        });
       });
       _selected.add(Fortune.randomInt(0, currentSpinner!.items.length));
     }
@@ -748,11 +764,9 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                               setState(() {
                                 isSpinning = false;
                               });
-                              int selectedIndex = currentSpinner!.items.length - 1;
-                              _selected.stream.listen((value) {
-                                selectedIndex = value;
-                              });
-                              _showItemDetails(currentSpinner!.items[selectedIndex]);
+                              if (selectedIndex != null) {
+                                _showItemDetails(currentSpinner!.items[selectedIndex!]);
+                              }
                             },
                             styleStrategy: UniformStyleStrategy(
                               borderWidth: 0,
@@ -792,7 +806,14 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
+                            gradient: LinearGradient(
+                              colors: [
+                                currentSpinner!.style.colors[0],
+                                currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -805,13 +826,15 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: _spin,
+                              onTap: isSpinning ? null : _spin,
                               customBorder: const CircleBorder(),
                               child: Center(
                                 child: Icon(
-                                  isSpinning ? Icons.refresh : Icons.play_arrow,
+                                  Icons.play_arrow,
                                   size: 40,
-                                  color: Theme.of(context).colorScheme.onPrimary,
+                                  color: isSpinning 
+                                    ? currentSpinner!.style.textColor.withOpacity(0.5)
+                                    : currentSpinner!.style.textColor,
                                 ),
                               ),
                             ),
