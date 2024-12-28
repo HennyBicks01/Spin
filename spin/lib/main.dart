@@ -11,7 +11,6 @@ import 'models/spinner.dart';
 import 'models/spinner_style.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -21,11 +20,22 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Spinner App',
+      title: 'Spinner',
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.light,
+        ),
         useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: ThemeMode.system,
       home: const SpinnerScreen(),
     );
   }
@@ -458,6 +468,31 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
       context: context,
       builder: (context) => Stack(
         children: [
+          Positioned(
+            left: MediaQuery.of(context).size.width / 2,
+            top: MediaQuery.of(context).size.height / 2,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              particleDrag: 0.05,
+              emissionFrequency: 0.05,
+              numberOfParticles: 50,
+              maxBlastForce: 25,
+              minBlastForce: 10,
+              gravity: 0.2,
+              colors: currentSpinner!.style.colors,
+              createParticlePath: (size) {
+                var path = Path();
+                path.addRect(
+                  Rect.fromCircle(
+                    center: Offset.zero,
+                    radius: 5,
+                  ),
+                );
+                return path;
+              },
+            ),
+          ),
           AlertDialog(
             title: Container(
               decoration: BoxDecoration(
@@ -488,7 +523,10 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                 Text(
                   item.description,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 18),
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                 ),
               ],
             ),
@@ -496,39 +534,20 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
               Center(
                 child: TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('OK', style: TextStyle(fontSize: 18)),
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                 ),
               ),
             ],
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            backgroundColor: Colors.white,
-          ),
-          Positioned(
-            left: MediaQuery.of(context).size.width / 2,
-            top: MediaQuery.of(context).size.height / 2,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              particleDrag: 0.05,
-              emissionFrequency: 0.05,
-              numberOfParticles: 50,
-              maxBlastForce: 25,
-              minBlastForce: 10,
-              gravity: 0.2,
-              colors: currentSpinner!.style.colors,
-              createParticlePath: (size) {
-                var path = Path();
-                path.addRect(
-                  Rect.fromCircle(
-                    center: Offset.zero,
-                    radius: 5,
-                  ),
-                );
-                return path;
-              },
-            ),
+            backgroundColor: Theme.of(context).colorScheme.surface,
           ),
         ],
       ),
