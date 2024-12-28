@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:uuid/uuid.dart';
@@ -11,6 +12,7 @@ import 'models/spinner.dart';
 import 'models/spinner_style.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
@@ -837,100 +839,134 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                         ],
                       ),
                     )
-                  : Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        GestureDetector(
-                          onTap: _spin,
-                          child: FortuneWheel(
-                            selected: _selected.stream,
-                            animateFirst: false,
-                            physics: CircularPanPhysics(
-                              duration: const Duration(seconds: 1),
-                              curve: Curves.decelerate,
-                            ),
-                            onFling: _spin,
-                            onAnimationEnd: () {
-                              setState(() {
-                                isSpinning = false;
-                              });
-                              if (selectedIndex != null) {
-                                _showItemDetails(currentSpinner!.items[selectedIndex!]);
-                              }
-                            },
-                            styleStrategy: UniformStyleStrategy(
-                              borderWidth: 0,
-                              borderColor: Colors.transparent,
-                            ),
-                            items: currentSpinner!.items
-                                .asMap()
-                                .entries
-                                .map((entry) {
-                                  final index = entry.key;
-                                  final item = entry.value;
-                                  final colorIndex = index % currentSpinner!.style.colors.length;
-                                  return FortuneItem(
-                                    style: FortuneItemStyle(
-                                      color: currentSpinner!.style.colors[colorIndex],
+                  : Center(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final size = min(
+                            min(constraints.maxWidth * 0.9, constraints.maxHeight * 0.9),
+                            500.0,
+                          );
+                          return SizedBox(
+                            width: size,
+                            height: size,
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                GestureDetector(
+                                  onTap: _spin,
+                                  child: FortuneWheel(
+                                    selected: _selected.stream,
+                                    animateFirst: false,
+                                    physics: CircularPanPhysics(
+                                      duration: const Duration(seconds: 1),
+                                      curve: Curves.decelerate,
+                                    ),
+                                    onFling: _spin,
+                                    onAnimationEnd: () {
+                                      setState(() {
+                                        isSpinning = false;
+                                      });
+                                      if (selectedIndex != null) {
+                                        _showItemDetails(currentSpinner!.items[selectedIndex!]);
+                                      }
+                                    },
+                                    styleStrategy: UniformStyleStrategy(
                                       borderWidth: 0,
                                       borderColor: Colors.transparent,
                                     ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        item.title,
-                                        style: TextStyle(
-                                          fontSize: currentSpinner!.style.fontSize,
-                                          fontWeight: currentSpinner!.style.fontWeight,
-                                          color: currentSpinner!.style.textColor,
+                                    indicators: [
+                                      FortuneIndicator(
+                                        alignment: Alignment(0, -1.04),  
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 30,
+                                          child: CustomPaint(
+                                            painter: TrianglePainter(
+                                              color: Colors.black,
+                                              gradientColors: [
+                                                currentSpinner!.style.colors[0],
+                                                currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
+                                              ],
+                                            ),
+                                          ),
                                         ),
-                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                    items: currentSpinner!.items
+                                        .asMap()
+                                        .entries
+                                        .map((entry) {
+                                          final index = entry.key;
+                                          final item = entry.value;
+                                          final colorIndex = index % currentSpinner!.style.colors.length;
+                                          return FortuneItem(
+                                            style: FortuneItemStyle(
+                                              color: currentSpinner!.style.colors[colorIndex],
+                                              borderWidth: 0,
+                                              borderColor: Colors.transparent,
+                                            ),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                                              child: Text(
+                                                item.title,
+                                                style: TextStyle(
+                                                  fontSize: currentSpinner!.style.fontSize,
+                                                  fontWeight: currentSpinner!.style.fontWeight,
+                                                  color: currentSpinner!.style.textColor,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          );
+                                        })
+                                        .toList(),
+                                  ),
+                                ),
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        currentSpinner!.style.colors[0],
+                                        currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    shape: BoxShape.circle,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 10,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: isSpinning ? null : _spin,
+                                      customBorder: const CircleBorder(),
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.play_arrow,
+                                          size: 40,
+                                          color: isSpinning 
+                                            ? currentSpinner!.style.textColor.withOpacity(0.5)
+                                            : currentSpinner!.style.textColor,
+                                        ),
                                       ),
                                     ),
-                                  );
-                                })
-                                .toList(),
-                          ),
-                        ),
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                currentSpinner!.style.colors[0],
-                                currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.2),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: isSpinning ? null : _spin,
-                              customBorder: const CircleBorder(),
-                              child: Center(
-                                child: Icon(
-                                  Icons.play_arrow,
-                                  size: 40,
-                                  color: isSpinning 
-                                    ? currentSpinner!.style.textColor.withOpacity(0.5)
-                                    : currentSpinner!.style.textColor,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ),
-                        ),
-                      ],
+                          );
+                        },
+                      ),
                     ),
             ),
           ],
@@ -938,4 +974,45 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
       ),
     );
   }
+}
+
+class TrianglePainter extends CustomPainter {
+  final Color color;
+  final List<Color> gradientColors;
+
+  TrianglePainter({
+    required this.color,
+    required this.gradientColors,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path();
+    path.moveTo(size.width / 2, size.height / 0.9);  
+    path.lineTo(0, 0);                         // Line to top-left
+    path.lineTo(size.width, 0);                // Line to top-right
+    path.close();
+
+    // Fill with solid color
+    final fillPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(path, fillPaint);
+
+    // Draw gradient outline
+    final outlinePaint = Paint()
+      ..shader = LinearGradient(
+        colors: gradientColors,
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ).createShader(Offset.zero & size)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawPath(path, outlinePaint);
+  }
+
+  @override
+  bool shouldRepaint(TrianglePainter oldDelegate) => 
+    color != oldDelegate.color || 
+    !listEquals(gradientColors, oldDelegate.gradientColors);
 }
