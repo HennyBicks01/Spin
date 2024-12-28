@@ -46,46 +46,117 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
 
   List<SpinnerStyle> predefinedStyles = [
     SpinnerStyle(
-      id: 'default',
-      name: 'Default',
-      backgroundColor: Colors.blue.shade100,
-      borderColor: Colors.blue,
-      borderWidth: 2,
-      textColor: Colors.black,
-      fontSize: 16,
-      fontWeight: FontWeight.bold,
-    ),
-    SpinnerStyle(
-      id: 'dark',
-      name: 'Dark Mode',
-      backgroundColor: Colors.grey.shade800,
-      borderColor: Colors.white,
-      borderWidth: 2,
+      id: 'rainbow',
+      name: 'Rainbow',
+      colors: [
+        Colors.red,
+        Colors.orange,
+        Colors.yellow,
+        Colors.green,
+        Colors.blue,
+        Colors.indigo,
+        Colors.purple,
+      ],
       textColor: Colors.white,
       fontSize: 16,
       fontWeight: FontWeight.bold,
     ),
     SpinnerStyle(
-      id: 'neon',
-      name: 'Neon',
-      backgroundColor: Colors.black,
-      borderColor: Colors.greenAccent,
-      borderWidth: 3,
-      textColor: Colors.greenAccent,
-      fontSize: 18,
-      fontWeight: FontWeight.w900,
+      id: 'ocean',
+      name: 'Ocean',
+      colors: [
+        const Color(0xFF1A237E), // Deep blue
+        const Color(0xFF0D47A1), // Navy
+        const Color(0xFF0288D1), // Ocean blue
+        const Color(0xFF26C6DA), // Turquoise
+        const Color(0xFF80DEEA), // Light blue
+      ],
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
     ),
     SpinnerStyle(
-      id: 'pastel',
-      name: 'Pastel',
-      backgroundColor: Colors.pink.shade50,
-      borderColor: Colors.pink.shade200,
-      borderWidth: 2,
-      textColor: Colors.pink.shade900,
+      id: 'sunset',
+      name: 'Sunset',
+      colors: [
+        const Color(0xFFFF1744), // Bright red
+        const Color(0xFFFF4081), // Pink
+        const Color(0xFFFF9100), // Orange
+        const Color(0xFFFFD740), // Yellow
+      ],
+      textColor: Colors.white,
       fontSize: 16,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'forest',
+      name: 'Forest',
+      colors: [
+        const Color(0xFF1B5E20), // Dark green
+        const Color(0xFF2E7D32), // Forest green
+        const Color(0xFF388E3C), // Medium green
+        const Color(0xFF43A047), // Light green
+        const Color(0xFF66BB6A), // Pale green
+      ],
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'candy',
+      name: 'Candy',
+      colors: [
+        const Color(0xFFEC407A), // Pink
+        const Color(0xFFAB47BC), // Purple
+        const Color(0xFF7E57C2), // Violet
+        const Color(0xFF42A5F5), // Blue
+        const Color(0xFF26C6DA), // Cyan
+      ],
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
     ),
   ];
+
+  void _createSpinner(String name) {
+    final newSpinner = Spinner(
+      id: _uuid.v4(),
+      name: name,
+      items: [
+        SpinnerItem(
+          id: _uuid.v4(),
+          title: 'Item 1',
+          description: 'First item',
+        ),
+        SpinnerItem(
+          id: _uuid.v4(),
+          title: 'Item 2',
+          description: 'Second item',
+        ),
+      ],
+      style: SpinnerStyle(
+        id: 'rainbow',
+        name: 'Rainbow',
+        colors: [
+          Colors.red,
+          Colors.orange,
+          Colors.yellow,
+          Colors.green,
+          Colors.blue,
+          Colors.indigo,
+          Colors.purple,
+        ],
+        textColor: Colors.white,
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    setState(() {
+      spinners.add(newSpinner);
+      currentSpinner = newSpinner;
+    });
+    _saveSpinners();
+  }
 
   @override
   void initState() {
@@ -105,26 +176,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
       
       if (spinnersJson == null || spinnersJson.isEmpty) {
         // Create default coin flip spinner
-        final defaultSpinner = Spinner(
-          id: _uuid.v4(),
-          name: 'Coin Flip',
-          items: [
-            SpinnerItem(
-              id: _uuid.v4(),
-              title: 'Heads',
-              description: 'The coin landed on heads!',
-            ),
-            SpinnerItem(
-              id: _uuid.v4(),
-              title: 'Tails',
-              description: 'The coin landed on tails!',
-            ),
-          ],
-          style: predefinedStyles[0], // Use default style
-        );
-        spinners = [defaultSpinner];
-        currentSpinner = defaultSpinner;
-        _saveSpinners();
+        _createSpinner('Coin Flip');
       } else {
         spinners = spinnersJson.map((spinnerStr) {
           try {
@@ -157,25 +209,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     } catch (e) {
       print('Error loading spinners: $e');
       // Create a default spinner if loading fails completely
-      final defaultSpinner = Spinner(
-        id: _uuid.v4(),
-        name: 'Default Spinner',
-        items: [
-          SpinnerItem(
-            id: _uuid.v4(),
-            title: 'Item 1',
-            description: 'First item',
-          ),
-          SpinnerItem(
-            id: _uuid.v4(),
-            title: 'Item 2',
-            description: 'Second item',
-          ),
-        ],
-        style: predefinedStyles[0],
-      );
-      spinners = [defaultSpinner];
-      currentSpinner = defaultSpinner;
+      _createSpinner('Default Spinner');
     }
     
     setState(() {
@@ -211,19 +245,8 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           TextButton(
             onPressed: () {
               if (nameController.text.isNotEmpty) {
-                final newSpinner = Spinner(
-                  id: _uuid.v4(),
-                  name: nameController.text,
-                  items: [],
-                  style: predefinedStyles[0], // Use default style
-                );
-                setState(() {
-                  spinners.add(newSpinner);
-                  currentSpinner = newSpinner;
-                });
-                _saveSpinners();
+                _createSpinner(nameController.text);
                 Navigator.pop(context);
-                _showAddItemDialog(); // Prompt to add first item
               }
             },
             child: const Text('Create'),
@@ -541,22 +564,12 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: style.backgroundColor,
-              border: Border.all(
-                color: style.borderColor,
-                width: style.borderWidth,
+              gradient: LinearGradient(
+                colors: style.colors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                'Ab',
-                style: TextStyle(
-                  color: style.textColor,
-                  fontSize: style.fontSize,
-                  fontWeight: style.fontWeight,
-                ),
-              ),
             ),
           ),
           title: Text(style.name),
@@ -700,62 +713,72 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
-                            'Add at least 2 items to start spinning!',
-                            style: TextStyle(fontSize: 18),
-                            textAlign: TextAlign.center,
-                          ),
+                          const Icon(Icons.warning, size: 48),
                           const SizedBox(height: 16),
-                          ElevatedButton.icon(
-                            onPressed: _showAddItemDialog,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Add Item'),
+                          const Text(
+                            'Add at least 2 items to spin!',
+                            style: TextStyle(fontSize: 18),
                           ),
                         ],
                       ),
                     )
-                  : Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: FortuneWheel(
-                        selected: _selected.stream,
-                        animateFirst: false,
-                        onAnimationEnd: () {
-                          setState(() {
-                            isSpinning = false;
-                          });
-                          int selectedIndex = currentSpinner!.items.length - 1;
-                          _selected.stream.listen((value) {
-                            selectedIndex = value;
-                          });
-                          _showItemDetails(currentSpinner!.items[selectedIndex]);
-                        },
-                        items: currentSpinner!.items
-                            .map((item) => FortuneItem(
-                                  style: FortuneItemStyle(
-                                    color: currentSpinner!.style.backgroundColor,
-                                    borderColor: currentSpinner!.style.borderColor,
-                                    borderWidth: currentSpinner!.style.borderWidth,
-                                    textStyle: TextStyle(
-                                      fontSize: currentSpinner!.style.fontSize,
-                                      fontWeight: currentSpinner!.style.fontWeight,
-                                      color: currentSpinner!.style.textColor,
-                                    ),
-                                  ),
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Text(
-                                      item.title,
-                                      style: TextStyle(
-                                        fontSize: currentSpinner!.style.fontSize,
-                                        fontWeight: currentSpinner!.style.fontWeight,
-                                        color: currentSpinner!.style.textColor,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ))
-                            .toList(),
+                  : FortuneWheel(
+                      selected: _selected.stream,
+                      animateFirst: false,
+                      physics: CircularPanPhysics(
+                        duration: const Duration(seconds: 1),
+                        curve: Curves.decelerate,
                       ),
+                      onFling: () {
+                        setState(() {
+                          isSpinning = true;
+                        });
+                        _selected.add(
+                          Fortune.randomInt(0, currentSpinner!.items.length),
+                        );
+                      },
+                      onAnimationEnd: () {
+                        setState(() {
+                          isSpinning = false;
+                        });
+                        int selectedIndex = currentSpinner!.items.length - 1;
+                        _selected.stream.listen((value) {
+                          selectedIndex = value;
+                        });
+                        _showItemDetails(currentSpinner!.items[selectedIndex]);
+                      },
+                      styleStrategy: UniformStyleStrategy(
+                        borderWidth: 0,
+                        borderColor: Colors.transparent,
+                      ),
+                      items: currentSpinner!.items
+                          .asMap()
+                          .entries
+                          .map((entry) {
+                            final index = entry.key;
+                            final item = entry.value;
+                            final colorIndex = index % currentSpinner!.style.colors.length;
+                            return FortuneItem(
+                              style: FortuneItemStyle(
+                                color: currentSpinner!.style.colors[colorIndex],
+                                borderWidth: 0,
+                                borderColor: Colors.transparent,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  item.title,
+                                  style: TextStyle(
+                                    fontSize: currentSpinner!.style.fontSize,
+                                    fontWeight: currentSpinner!.style.fontWeight,
+                                    color: currentSpinner!.style.textColor,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            );
+                          })
+                          .toList(),
                     ),
             ),
             Container(

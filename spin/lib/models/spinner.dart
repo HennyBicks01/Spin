@@ -27,12 +27,18 @@ class Spinner {
   factory Spinner.fromJson(Map<String, dynamic> json) {
     // Default style for migration from old data
     final defaultStyle = SpinnerStyle(
-      id: 'default',
-      name: 'Default',
-      backgroundColor: Colors.blue.shade100,
-      borderColor: Colors.blue,
-      borderWidth: 2,
-      textColor: Colors.black,
+      id: 'rainbow',
+      name: 'Rainbow',
+      colors: [
+        Colors.red,
+        Colors.orange,
+        Colors.yellow,
+        Colors.green,
+        Colors.blue,
+        Colors.indigo,
+        Colors.purple,
+      ],
+      textColor: Colors.white,
       fontSize: 16,
       fontWeight: FontWeight.bold,
     );

@@ -3,9 +3,7 @@ import 'dart:ui';
 class SpinnerStyle {
   final String id;
   final String name;
-  final Color backgroundColor;
-  final Color borderColor;
-  final double borderWidth;
+  final List<Color> colors;
   final Color textColor;
   final double fontSize;
   final FontWeight fontWeight;
@@ -13,9 +11,7 @@ class SpinnerStyle {
   const SpinnerStyle({
     required this.id,
     required this.name,
-    required this.backgroundColor,
-    required this.borderColor,
-    required this.borderWidth,
+    required this.colors,
     required this.textColor,
     required this.fontSize,
     required this.fontWeight,
@@ -25,9 +21,7 @@ class SpinnerStyle {
     return {
       'id': id,
       'name': name,
-      'backgroundColor': backgroundColor.value,
-      'borderColor': borderColor.value,
-      'borderWidth': borderWidth,
+      'colors': colors.map((c) => c.value).toList(),
       'textColor': textColor.value,
       'fontSize': fontSize,
       'fontWeight': fontWeight.index,
@@ -38,9 +32,7 @@ class SpinnerStyle {
     return SpinnerStyle(
       id: json['id'] as String,
       name: json['name'] as String,
-      backgroundColor: Color(json['backgroundColor'] as int),
-      borderColor: Color(json['borderColor'] as int),
-      borderWidth: json['borderWidth'] as double,
+      colors: (json['colors'] as List).map((c) => Color(c as int)).toList(),
       textColor: Color(json['textColor'] as int),
       fontSize: json['fontSize'] as double,
       fontWeight: FontWeight.values[json['fontWeight'] as int],
