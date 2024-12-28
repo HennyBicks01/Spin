@@ -6,6 +6,7 @@ import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:uuid/uuid.dart';
 import 'models/spinner_item.dart';
 import 'models/spinner.dart';
+import 'models/spinner_style.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +44,49 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   late final StreamController<int> _selected;
   final _uuid = const Uuid();
 
+  List<SpinnerStyle> predefinedStyles = [
+    SpinnerStyle(
+      id: 'default',
+      name: 'Default',
+      backgroundColor: Colors.blue.shade100,
+      borderColor: Colors.blue,
+      borderWidth: 2,
+      textColor: Colors.black,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'dark',
+      name: 'Dark Mode',
+      backgroundColor: Colors.grey.shade800,
+      borderColor: Colors.white,
+      borderWidth: 2,
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'neon',
+      name: 'Neon',
+      backgroundColor: Colors.black,
+      borderColor: Colors.greenAccent,
+      borderWidth: 3,
+      textColor: Colors.greenAccent,
+      fontSize: 18,
+      fontWeight: FontWeight.w900,
+    ),
+    SpinnerStyle(
+      id: 'pastel',
+      name: 'Pastel',
+      backgroundColor: Colors.pink.shade50,
+      borderColor: Colors.pink.shade200,
+      borderWidth: 2,
+      textColor: Colors.pink.shade900,
+      fontSize: 16,
+      fontWeight: FontWeight.w500,
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -55,34 +99,83 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
       isLoading = true;
     });
     
-    final prefs = await SharedPreferences.getInstance();
-    final spinnersJson = prefs.getStringList('spinners');
-    if (spinnersJson == null || spinnersJson.isEmpty) {
-      // Create default coin flip spinner
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final spinnersJson = prefs.getStringList('spinners');
+      
+      if (spinnersJson == null || spinnersJson.isEmpty) {
+        // Create default coin flip spinner
+        final defaultSpinner = Spinner(
+          id: _uuid.v4(),
+          name: 'Coin Flip',
+          items: [
+            SpinnerItem(
+              id: _uuid.v4(),
+              title: 'Heads',
+              description: 'The coin landed on heads!',
+            ),
+            SpinnerItem(
+              id: _uuid.v4(),
+              title: 'Tails',
+              description: 'The coin landed on tails!',
+            ),
+          ],
+          style: predefinedStyles[0], // Use default style
+        );
+        spinners = [defaultSpinner];
+        currentSpinner = defaultSpinner;
+        _saveSpinners();
+      } else {
+        spinners = spinnersJson.map((spinnerStr) {
+          try {
+            return Spinner.fromJson(json.decode(spinnerStr) as Map<String, dynamic>);
+          } catch (e) {
+            print('Error loading spinner: $e');
+            // Return a default spinner if loading fails
+            return Spinner(
+              id: _uuid.v4(),
+              name: 'New Spinner',
+              items: [
+                SpinnerItem(
+                  id: _uuid.v4(),
+                  title: 'Item 1',
+                  description: 'First item',
+                ),
+                SpinnerItem(
+                  id: _uuid.v4(),
+                  title: 'Item 2',
+                  description: 'Second item',
+                ),
+              ],
+              style: predefinedStyles[0],
+            );
+          }
+        }).toList();
+        
+        currentSpinner = spinners.first;
+      }
+    } catch (e) {
+      print('Error loading spinners: $e');
+      // Create a default spinner if loading fails completely
       final defaultSpinner = Spinner(
         id: _uuid.v4(),
-        name: 'Coin Flip',
+        name: 'Default Spinner',
         items: [
           SpinnerItem(
             id: _uuid.v4(),
-            title: 'Heads',
-            description: 'The coin landed on heads!',
+            title: 'Item 1',
+            description: 'First item',
           ),
           SpinnerItem(
             id: _uuid.v4(),
-            title: 'Tails',
-            description: 'The coin landed on tails!',
+            title: 'Item 2',
+            description: 'Second item',
           ),
         ],
+        style: predefinedStyles[0],
       );
       spinners = [defaultSpinner];
       currentSpinner = defaultSpinner;
-      _saveSpinners();
-    } else {
-      spinners = spinnersJson
-          .map((spinner) => Spinner.fromJson(json.decode(spinner)))
-          .toList();
-      currentSpinner = spinners.first;
     }
     
     setState(() {
@@ -122,6 +215,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                   id: _uuid.v4(),
                   name: nameController.text,
                   items: [],
+                  style: predefinedStyles[0], // Use default style
                 );
                 setState(() {
                   spinners.add(newSpinner);
@@ -184,6 +278,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                     id: spinner.id,
                     name: nameController.text,
                     items: spinner.items,
+                    style: spinner.style,
                   );
                   if (currentSpinner!.id == spinner.id) {
                     currentSpinner = spinners[index];
@@ -336,6 +431,158 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     );
   }
 
+  Widget _buildRightDrawer() {
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.settings, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Edit ${currentSpinner!.name}',
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  const TabBar(
+                    tabs: [
+                      Tab(text: 'Items'),
+                      Tab(text: 'Style'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildItemsList(),
+                        _buildStylesList(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemsList() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton.icon(
+            onPressed: _showAddItemDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Item'),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: currentSpinner!.items.length,
+            itemBuilder: (context, index) {
+              final item = currentSpinner!.items[index];
+              return ListTile(
+                title: Text(item.title),
+                subtitle: Text(
+                  item.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _editItem(item),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: currentSpinner!.items.length <= 2
+                          ? null
+                          : () => _deleteItem(item.id),
+                      color: currentSpinner!.items.length <= 2 ? Colors.grey : Colors.red,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStylesList() {
+    return ListView.builder(
+      itemCount: predefinedStyles.length,
+      itemBuilder: (context, index) {
+        final style = predefinedStyles[index];
+        return ListTile(
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: style.backgroundColor,
+              border: Border.all(
+                color: style.borderColor,
+                width: style.borderWidth,
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Center(
+              child: Text(
+                'Ab',
+                style: TextStyle(
+                  color: style.textColor,
+                  fontSize: style.fontSize,
+                  fontWeight: style.fontWeight,
+                ),
+              ),
+            ),
+          ),
+          title: Text(style.name),
+          trailing: Radio<String>(
+            value: style.id,
+            groupValue: currentSpinner!.style.id,
+            onChanged: (value) {
+              setState(() {
+                final index = spinners.indexWhere((s) => s.id == currentSpinner!.id);
+                final updatedSpinner = Spinner(
+                  id: currentSpinner!.id,
+                  name: currentSpinner!.name,
+                  items: currentSpinner!.items,
+                  style: style,
+                );
+                spinners[index] = updatedSpinner;
+                currentSpinner = updatedSpinner;
+                _saveSpinners();
+              });
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading || currentSpinner == null) {
@@ -443,74 +690,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           ],
         ),
       ),
-      endDrawer: Drawer(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              color: Theme.of(context).colorScheme.primaryContainer,
-              width: double.infinity,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.settings, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Edit ${currentSpinner!.name}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton.icon(
-                onPressed: _showAddItemDialog,
-                icon: const Icon(Icons.add),
-                label: const Text('Add New Item'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: currentSpinner!.items.length,
-                itemBuilder: (context, index) {
-                  final item = currentSpinner!.items[index];
-                  return ListTile(
-                    title: Text(item.title),
-                    subtitle: Text(
-                      item.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _editItem(item),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: currentSpinner!.items.length <= 2
-                              ? null
-                              : () => _deleteItem(item.id),
-                          color: currentSpinner!.items.length <= 2 ? Colors.grey : Colors.red,
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      endDrawer: _buildRightDrawer(),
       body: SafeArea(
         child: Column(
           children: [
@@ -552,21 +732,23 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                         items: currentSpinner!.items
                             .map((item) => FortuneItem(
                                   style: FortuneItemStyle(
-                                    color: Theme.of(context).colorScheme.primaryContainer,
-                                    borderColor: Theme.of(context).colorScheme.primary,
-                                    borderWidth: 2,
-                                    textStyle: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                    color: currentSpinner!.style.backgroundColor,
+                                    borderColor: currentSpinner!.style.borderColor,
+                                    borderWidth: currentSpinner!.style.borderWidth,
+                                    textStyle: TextStyle(
+                                      fontSize: currentSpinner!.style.fontSize,
+                                      fontWeight: currentSpinner!.style.fontWeight,
+                                      color: currentSpinner!.style.textColor,
                                     ),
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.all(8.0),
                                     child: Text(
                                       item.title,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                      style: TextStyle(
+                                        fontSize: currentSpinner!.style.fontSize,
+                                        fontWeight: currentSpinner!.style.fontWeight,
+                                        color: currentSpinner!.style.textColor,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
