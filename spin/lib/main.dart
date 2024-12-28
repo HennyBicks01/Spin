@@ -1,9 +1,11 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:uuid/uuid.dart';
+import 'package:confetti/confetti.dart';
 import 'models/spinner_item.dart';
 import 'models/spinner.dart';
 import 'models/spinner_style.dart';
@@ -45,6 +47,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   final _uuid = const Uuid();
   int? selectedIndex;
   StreamSubscription<int>? _subscription;
+  late ConfettiController _confettiController;
 
   List<SpinnerStyle> predefinedStyles = [
     SpinnerStyle(
@@ -164,6 +167,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   void initState() {
     super.initState();
     _selected = StreamController<int>.broadcast();
+    _confettiController = ConfettiController(duration: const Duration(seconds: 2));
     _loadSpinners();
   }
 
@@ -171,6 +175,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   void dispose() {
     _selected.close();
     _subscription?.cancel();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -448,15 +453,82 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   }
 
   void _showItemDetails(SpinnerItem item) {
+    _confettiController.play();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(item.title),
-        content: Text(item.description),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      builder: (context) => Stack(
+        children: [
+          AlertDialog(
+            title: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    currentSpinner!.style.colors[0],
+                    currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: Text(
+                item.title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: currentSpinner!.style.textColor,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.description,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ],
+            ),
+            actions: [
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK', style: TextStyle(fontSize: 18)),
+                ),
+              ),
+            ],
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            backgroundColor: Colors.white,
+          ),
+          Positioned(
+            left: MediaQuery.of(context).size.width / 2,
+            top: MediaQuery.of(context).size.height / 2,
+            child: ConfettiWidget(
+              confettiController: _confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              particleDrag: 0.05,
+              emissionFrequency: 0.05,
+              numberOfParticles: 50,
+              maxBlastForce: 25,
+              minBlastForce: 10,
+              gravity: 0.2,
+              colors: currentSpinner!.style.colors,
+              createParticlePath: (size) {
+                var path = Path();
+                path.addRect(
+                  Rect.fromCircle(
+                    center: Offset.zero,
+                    radius: 5,
+                  ),
+                );
+                return path;
+              },
+            ),
           ),
         ],
       ),
@@ -469,22 +541,20 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
         children: [
           DrawerHeader(
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
+              gradient: LinearGradient(
+                colors: currentSpinner?.style.colors ?? [Colors.blue, Colors.lightBlue],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
             child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.settings, size: 48),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Edit ${currentSpinner!.name}',
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
+              child: Text(
+                currentSpinner?.name ?? 'Spinner',
+                style: TextStyle(
+                  color: currentSpinner?.style.textColor ?? Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -493,11 +563,12 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
               length: 2,
               child: Column(
                 children: [
-                  const TabBar(
-                    tabs: [
+                  TabBar(
+                    tabs: const [
                       Tab(text: 'Items'),
                       Tab(text: 'Style'),
                     ],
+                    labelColor: Theme.of(context).colorScheme.primary,
                   ),
                   Expanded(
                     child: TabBarView(
