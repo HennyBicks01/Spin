@@ -496,26 +496,22 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
             ),
           ),
           AlertDialog(
-            title: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    currentSpinner!.style.colors[0],
-                    currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            title: ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  currentSpinner!.style.colors[0],
+                  currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
               child: Text(
                 item.title,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: currentSpinner!.style.textColor,
-                  fontSize: 24,
+                  fontSize: 28,
                   fontWeight: FontWeight.bold,
+                  color: Colors.white, // This will be masked by the gradient
                 ),
               ),
             ),
@@ -906,7 +902,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                               borderColor: Colors.transparent,
                                             ),
                                             child: Padding(
-                                              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
+                                              padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
                                               child: Text(
                                                 item.title,
                                                 style: TextStyle(
@@ -925,8 +921,8 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                   ),
                                 ),
                                 Container(
-                                  width: 80,
-                                  height: 80,
+                                  width: 50,
+                                  height: 50,
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
@@ -953,7 +949,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                       child: Center(
                                         child: Icon(
                                           Icons.play_arrow,
-                                          size: 40,
+                                          size: 30,
                                           color: isSpinning 
                                             ? currentSpinner!.style.textColor.withOpacity(0.5)
                                             : currentSpinner!.style.textColor,
