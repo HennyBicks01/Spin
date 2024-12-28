@@ -596,6 +596,15 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     );
   }
 
+  void _spin() {
+    if (!isSpinning && currentSpinner!.items.length >= 2) {
+      setState(() {
+        isSpinning = true;
+      });
+      _selected.add(Fortune.randomInt(0, currentSpinner!.items.length));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (isLoading || currentSpinner == null) {
@@ -722,85 +731,94 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                         ],
                       ),
                     )
-                  : FortuneWheel(
-                      selected: _selected.stream,
-                      animateFirst: false,
-                      physics: CircularPanPhysics(
-                        duration: const Duration(seconds: 1),
-                        curve: Curves.decelerate,
-                      ),
-                      onFling: () {
-                        setState(() {
-                          isSpinning = true;
-                        });
-                        _selected.add(
-                          Fortune.randomInt(0, currentSpinner!.items.length),
-                        );
-                      },
-                      onAnimationEnd: () {
-                        setState(() {
-                          isSpinning = false;
-                        });
-                        int selectedIndex = currentSpinner!.items.length - 1;
-                        _selected.stream.listen((value) {
-                          selectedIndex = value;
-                        });
-                        _showItemDetails(currentSpinner!.items[selectedIndex]);
-                      },
-                      styleStrategy: UniformStyleStrategy(
-                        borderWidth: 0,
-                        borderColor: Colors.transparent,
-                      ),
-                      items: currentSpinner!.items
-                          .asMap()
-                          .entries
-                          .map((entry) {
-                            final index = entry.key;
-                            final item = entry.value;
-                            final colorIndex = index % currentSpinner!.style.colors.length;
-                            return FortuneItem(
-                              style: FortuneItemStyle(
-                                color: currentSpinner!.style.colors[colorIndex],
-                                borderWidth: 0,
-                                borderColor: Colors.transparent,
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: _spin,
+                          child: FortuneWheel(
+                            selected: _selected.stream,
+                            animateFirst: false,
+                            physics: CircularPanPhysics(
+                              duration: const Duration(seconds: 1),
+                              curve: Curves.decelerate,
+                            ),
+                            onFling: _spin,
+                            onAnimationEnd: () {
+                              setState(() {
+                                isSpinning = false;
+                              });
+                              int selectedIndex = currentSpinner!.items.length - 1;
+                              _selected.stream.listen((value) {
+                                selectedIndex = value;
+                              });
+                              _showItemDetails(currentSpinner!.items[selectedIndex]);
+                            },
+                            styleStrategy: UniformStyleStrategy(
+                              borderWidth: 0,
+                              borderColor: Colors.transparent,
+                            ),
+                            items: currentSpinner!.items
+                                .asMap()
+                                .entries
+                                .map((entry) {
+                                  final index = entry.key;
+                                  final item = entry.value;
+                                  final colorIndex = index % currentSpinner!.style.colors.length;
+                                  return FortuneItem(
+                                    style: FortuneItemStyle(
+                                      color: currentSpinner!.style.colors[colorIndex],
+                                      borderWidth: 0,
+                                      borderColor: Colors.transparent,
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(
+                                        item.title,
+                                        style: TextStyle(
+                                          fontSize: currentSpinner!.style.fontSize,
+                                          fontWeight: currentSpinner!.style.fontWeight,
+                                          color: currentSpinner!.style.textColor,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  );
+                                })
+                                .toList(),
+                          ),
+                        ),
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 10,
+                                spreadRadius: 2,
                               ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Text(
-                                  item.title,
-                                  style: TextStyle(
-                                    fontSize: currentSpinner!.style.fontSize,
-                                    fontWeight: currentSpinner!.style.fontWeight,
-                                    color: currentSpinner!.style.textColor,
-                                  ),
-                                  textAlign: TextAlign.center,
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _spin,
+                              customBorder: const CircleBorder(),
+                              child: Center(
+                                child: Icon(
+                                  isSpinning ? Icons.refresh : Icons.play_arrow,
+                                  size: 40,
+                                  color: Theme.of(context).colorScheme.onPrimary,
                                 ),
                               ),
-                            );
-                          })
-                          .toList(),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-            ),
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                onPressed: currentSpinner!.items.length < 2 || isSpinning
-                    ? null
-                    : () {
-                        setState(() {
-                          isSpinning = true;
-                        });
-                        _selected.add(Fortune.randomInt(0, currentSpinner!.items.length));
-                      },
-                child: const Text(
-                  'SPIN!',
-                  style: TextStyle(fontSize: 20),
-                ),
-              ),
             ),
           ],
         ),
