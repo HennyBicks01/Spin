@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_fortune_wheel/flutter_fortune_wheel.dart';
 import 'package:uuid/uuid.dart';
 import 'package:confetti/confetti.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'models/spinner_item.dart';
 import 'models/spinner.dart';
 import 'models/spinner_style.dart';
@@ -724,6 +725,127 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     });
   }
 
+  Widget _buildLeftDrawer() {
+    final colors = currentSpinner?.style.colors ?? [Colors.blue, Colors.lightBlue];
+    final gradientColors = [
+      colors[0],
+      colors[colors.length ~/ 2], // Safely get middle color
+    ];
+
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: gradientColors,
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SvgPicture.asset(
+                    'assets/lottery.svg',
+                    height: 64,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'My Spinners',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton.icon(
+              onPressed: _addSpinner,
+              icon: const Icon(Icons.add),
+              label: const Text('Create New Spinner'),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: spinners.length,
+              itemBuilder: (context, index) {
+                final spinner = spinners[index];
+                return ListTile(
+                  selected: currentSpinner!.id == spinner.id,
+                  leading: SvgPicture.asset(
+                    'assets/lottery.svg',
+                    height: 24,
+                    colorFilter: ColorFilter.mode(
+                      currentSpinner!.id == spinner.id 
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.onSurface,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  title: Text(
+                    spinner.name,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    '${spinner.items.length} items',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  trailing: Container(
+                    width: 96, // Fixed width for two icons
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () => _editSpinner(spinner),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.delete),
+                          onPressed: spinners.length <= 1
+                              ? null
+                              : () => _deleteSpinner(spinner.id),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          visualDensity: VisualDensity.compact,
+                          color: spinners.length <= 1 ? Colors.grey : Colors.red,
+                        ),
+                      ],
+                    ),
+                  ),
+                  onTap: () {
+                    setState(() {
+                      currentSpinner = spinner;
+                    });
+                    Navigator.pop(context);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRightDrawer() {
     return Drawer(
       child: Column(
@@ -1048,81 +1170,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 48),
-              color: Theme.of(context).colorScheme.primaryContainer,
-              width: double.infinity,
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.casino, size: 48),
-                  SizedBox(height: 16),
-                  Text(
-                    'My Spinners',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton.icon(
-                onPressed: _addSpinner,
-                icon: const Icon(Icons.add),
-                label: const Text('Create New Spinner'),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
-                ),
-              ),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: spinners.length,
-                itemBuilder: (context, index) {
-                  final spinner = spinners[index];
-                  return ListTile(
-                    selected: currentSpinner!.id == spinner.id,
-                    leading: const Icon(Icons.casino),
-                    title: Text(spinner.name),
-                    subtitle: Text(
-                      '${spinner.items.length} items',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _editSpinner(spinner),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: spinners.length <= 1
-                              ? null
-                              : () => _deleteSpinner(spinner.id),
-                          color: spinners.length <= 1 ? Colors.grey : Colors.red,
-                        ),
-                      ],
-                    ),
-                    onTap: () {
-                      setState(() {
-                        currentSpinner = spinner;
-                      });
-                      Navigator.pop(context);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      drawer: _buildLeftDrawer(),
       endDrawer: _buildRightDrawer(),
       body: SafeArea(
         child: Column(
