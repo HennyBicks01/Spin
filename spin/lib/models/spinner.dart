@@ -7,12 +7,18 @@ class Spinner {
   final String name;
   final List<SpinnerItem> items;
   final SpinnerStyle style;
+  final bool showPercentages;
+  final bool dynamicWeightScaling;
+  final double selectedPenalty;
 
   const Spinner({
     required this.id,
     required this.name,
     required this.items,
     required this.style,
+    this.showPercentages = false,
+    this.dynamicWeightScaling = false,
+    this.selectedPenalty = 100.0,
   });
 
   Map<String, dynamic> toJson() {
@@ -21,6 +27,9 @@ class Spinner {
       'name': name,
       'items': items.map((item) => item.toJson()).toList(),
       'style': style.toJson(),
+      'showPercentages': showPercentages,
+      'dynamicWeightScaling': dynamicWeightScaling,
+      'selectedPenalty': selectedPenalty,
     };
   }
 
@@ -52,6 +61,31 @@ class Spinner {
       style: json['style'] != null 
           ? SpinnerStyle.fromJson(json['style'] as Map<String, dynamic>)
           : defaultStyle,
+      showPercentages: json['showPercentages'] as bool? ?? false,
+      dynamicWeightScaling: json['dynamicWeightScaling'] as bool? ?? false,
+      selectedPenalty: json['selectedPenalty'] as double? ?? 100.0,
     );
   }
+
+  Spinner copyWith({
+    String? id,
+    String? name,
+    List<SpinnerItem>? items,
+    SpinnerStyle? style,
+    bool? showPercentages,
+    bool? dynamicWeightScaling,
+    double? selectedPenalty,
+  }) {
+    return Spinner(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      items: items ?? this.items,
+      style: style ?? this.style,
+      showPercentages: showPercentages ?? this.showPercentages,
+      dynamicWeightScaling: dynamicWeightScaling ?? this.dynamicWeightScaling,
+      selectedPenalty: selectedPenalty ?? this.selectedPenalty,
+    );
+  }
+
+  double get maxWeight => items.length * 100.0;
 }

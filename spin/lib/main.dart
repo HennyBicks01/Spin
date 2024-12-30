@@ -135,6 +135,20 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     ),
   ];
 
+  int _getWeightedRandomIndex(List<SpinnerItem> items) {
+    final random = Random();
+    final totalWeight = items.fold(0.0, (sum, item) => sum + item.weight);
+    double randomWeight = random.nextDouble() * totalWeight;
+    
+    for (int i = 0; i < items.length; i++) {
+      randomWeight -= items[i].weight;
+      if (randomWeight <= 0) {
+        return i;
+      }
+    }
+    return items.length - 1;
+  }
+
   void _createSpinner(String name) {
     final newSpinner = Spinner(
       id: _uuid.v4(),
@@ -144,11 +158,15 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           id: _uuid.v4(),
           title: 'Item 1',
           description: 'First item',
+          enabled: true,
+          weight: 1.0,
         ),
         SpinnerItem(
           id: _uuid.v4(),
           title: 'Item 2',
           description: 'Second item',
+          enabled: true,
+          weight: 1.0,
         ),
       ],
       style: SpinnerStyle(
@@ -218,11 +236,15 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                   id: _uuid.v4(),
                   title: 'Item 1',
                   description: 'First item',
+                  enabled: true,
+                  weight: 1.0,
                 ),
                 SpinnerItem(
                   id: _uuid.v4(),
                   title: 'Item 2',
                   description: 'Second item',
+                  enabled: true,
+                  weight: 1.0,
                 ),
               ],
               style: predefinedStyles[0],
@@ -350,6 +372,8 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
         id: _uuid.v4(),
         title: title,
         description: description,
+        enabled: true,
+        weight: 1.0,
       );
       final index = spinners.indexWhere((s) => s.id == currentSpinner!.id);
       currentSpinner!.items.add(newItem);
@@ -361,24 +385,56 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   void _editItem(SpinnerItem item) {
     final titleController = TextEditingController(text: item.title);
     final descriptionController = TextEditingController(text: item.description);
+    final weightController = TextEditingController(text: (item.weight * 100).toStringAsFixed(2));
+    bool isEnabled = item.enabled;
+    double? weight = item.weight;
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Edit Item'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title'),
-            ),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-              maxLines: 3,
-            ),
-          ],
+        content: StatefulBuilder(
+          builder: (context, setState) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Title'),
+              ),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(labelText: 'Description'),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: weightController,
+                decoration: const InputDecoration(
+                  labelText: 'Weight (%)',
+                  hintText: 'Enter value between 0.01 and 99.99',
+                  suffixText: '%',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: (value) {
+                  if (value.isEmpty) {
+                    setState(() => weight = 1.0);
+                    return;
+                  }
+                  final parsed = double.tryParse(value);
+                  if (parsed != null && parsed >= 0.01 && parsed <= 99.99) {
+                    setState(() => weight = parsed / 100);
+                  }
+                },
+              ),
+              CheckboxListTile(
+                title: const Text('Enabled'),
+                value: isEnabled,
+                onChanged: (value) {
+                  setState(() => isEnabled = value ?? true);
+                },
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -387,13 +443,15 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (titleController.text.isNotEmpty) {
+              if (titleController.text.isNotEmpty && weight != null) {
                 setState(() {
                   final index = currentSpinner!.items.indexWhere((i) => i.id == item.id);
                   currentSpinner!.items[index] = SpinnerItem(
                     id: item.id,
                     title: titleController.text,
                     description: descriptionController.text,
+                    enabled: isEnabled,
+                    weight: weight!,
                   );
                 });
                 _saveSpinners();
@@ -465,6 +523,24 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
   }
 
   void _showItemDetails(SpinnerItem item) {
+    // Get the enabled items list and selected item
+    final enabledItems = currentSpinner!.items.where((item) => item.enabled).toList();
+    SpinnerItem? selectedItem;
+    
+    if (selectedIndex != null) {
+      final actualIndex = selectedIndex! % enabledItems.length;
+      if (actualIndex >= 0 && actualIndex < enabledItems.length) {
+        selectedItem = enabledItems[actualIndex];
+        
+        if (currentSpinner!.dynamicWeightScaling) {
+          _updateWeightsAfterSpin(selectedItem);
+        }
+      }
+    }
+
+    // Use the selected item for the dialog if we found it, otherwise use the passed item
+    final itemToShow = selectedItem ?? item;
+    
     _confettiController.play();
     showDialog(
       context: context,
@@ -481,7 +557,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
               numberOfParticles: 50,
               maxBlastForce: 25,
               minBlastForce: 10,
-              gravity: 0.2,
+              gravity: 0.1,
               colors: currentSpinner!.style.colors,
               createParticlePath: (size) {
                 var path = Path();
@@ -496,22 +572,23 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
             ),
           ),
           AlertDialog(
-            title: ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  currentSpinner!.style.colors[0],
-                  currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                item.title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // This will be masked by the gradient
+            title: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: ShaderMask(
+                shaderCallback: (bounds) => LinearGradient(
+                  colors: [
+                    currentSpinner!.style.colors[0],
+                    currentSpinner!.style.colors[currentSpinner!.style.colors.length ~/ 2],
+                  ],
+                ).createShader(bounds),
+                child: Text(
+                  itemToShow.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -519,7 +596,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  item.description,
+                  itemToShow.description,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 18,
@@ -552,6 +629,101 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     );
   }
 
+  void _spin() {
+    if (!isSpinning && currentSpinner!.items.length >= 2) {
+      setState(() {
+        isSpinning = true;
+        selectedIndex = null;
+      });
+      
+      _subscription?.cancel();
+      _subscription = _selected.stream.listen((value) {
+        setState(() {
+          selectedIndex = value;
+        });
+      });
+      
+      // Get weighted random index
+      final selectedIdx = _getWeightedRandomIndex(currentSpinner!.items.where((item) => item.enabled).toList());
+      
+      // Find the number of full rotations we want (between 3 and 5)
+      final fullRotations = Random().nextInt(3) + 3;
+      
+      // Calculate the final value for Fortune.randomInt
+      final fortuneValue = (fullRotations * currentSpinner!.items.where((item) => item.enabled).length) + selectedIdx;
+      
+      _selected.add(fortuneValue);
+    }
+  }
+
+  void _updateWeightsAfterSpin(SpinnerItem selectedItem) {
+    if (!currentSpinner!.dynamicWeightScaling) return;
+
+    final enabledItems = currentSpinner!.items.where((item) => item.enabled).toList();
+    if (enabledItems.length <= 1) return;
+
+    // Convert penalty percentage to multiplier
+    final multiplier = 1.0 - (currentSpinner!.selectedPenalty / 100.0);
+    
+    // Calculate weight changes
+    final oldWeight = selectedItem.weight;
+    final newWeight = oldWeight * multiplier;
+    final weightToRedistribute = oldWeight - newWeight;
+    final distribution = weightToRedistribute / (enabledItems.where((item) => item.id != selectedItem.id).length);
+
+    print('\n=== Weight Redistribution Details ===');
+    print('Spinner: ${currentSpinner!.name}');
+    print('Selected Item: ${selectedItem.title} (ID: ${selectedItem.id})');
+    print('Current Weight: ${(oldWeight * 100).toStringAsFixed(1)}%');
+    print('Penalty Multiplier: ${(multiplier * 100).toStringAsFixed(1)}%');
+    print('New Weight: ${(newWeight * 100).toStringAsFixed(1)}%');
+    print('Weight to Redistribute: ${(weightToRedistribute * 100).toStringAsFixed(1)}%');
+    print('Distribution per Item: ${(distribution * 100).toStringAsFixed(1)}%');
+    print('\nEnabled Items (${enabledItems.length}):');
+    enabledItems.forEach((item) {
+      print('${item.title} (ID: ${item.id}): ${(item.weight * 100).toStringAsFixed(1)}%');
+    });
+
+    final updatedItems = currentSpinner!.items.map((item) {
+      if (!item.enabled) return item;
+
+      double adjustedWeight;
+      if (item.id == selectedItem.id) {
+        adjustedWeight = newWeight;
+        print('\nUpdating selected item ${item.title}:');
+        print('Old weight: ${(item.weight * 100).toStringAsFixed(1)}%');
+        print('New weight: ${(adjustedWeight * 100).toStringAsFixed(1)}%');
+      } else {
+        adjustedWeight = min(currentSpinner!.maxWeight / 100.0, item.weight + distribution);
+        print('\nUpdating other item ${item.title}:');
+        print('Old weight: ${(item.weight * 100).toStringAsFixed(1)}%');
+        print('New weight: ${(adjustedWeight * 100).toStringAsFixed(1)}%');
+      }
+
+      return SpinnerItem(
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        enabled: item.enabled,
+        weight: max(0.0001, adjustedWeight),
+      );
+    }).toList();
+
+    print('\nFinal Weights:');
+    updatedItems.where((item) => item.enabled).forEach((item) {
+      print('${item.title}: ${(item.weight * 100).toStringAsFixed(1)}%');
+    });
+    print('===============================\n');
+
+    setState(() {
+      final index = spinners.indexWhere((s) => s.id == currentSpinner!.id);
+      final updatedSpinner = currentSpinner!.copyWith(items: updatedItems);
+      spinners[index] = updatedSpinner;
+      currentSpinner = updatedSpinner;
+      _saveSpinners();
+    });
+  }
+
   Widget _buildRightDrawer() {
     return Drawer(
       child: Column(
@@ -577,13 +749,14 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           ),
           Expanded(
             child: DefaultTabController(
-              length: 2,
+              length: 3,
               child: Column(
                 children: [
                   TabBar(
                     tabs: const [
                       Tab(text: 'Items'),
                       Tab(text: 'Style'),
+                      Tab(text: 'Settings'),
                     ],
                     labelColor: Theme.of(context).colorScheme.primary,
                   ),
@@ -592,6 +765,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                       children: [
                         _buildItemsList(),
                         _buildStylesList(),
+                        _buildSettingsList(),
                       ],
                     ),
                   ),
@@ -601,6 +775,124 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSettingsList() {
+    return ListView(
+      children: [
+        SwitchListTile(
+          title: const Text('Show Percentages'),
+          subtitle: const Text('Display probability percentages on the wheel'),
+          value: currentSpinner!.showPercentages,
+          onChanged: (value) {
+            setState(() {
+              final index = spinners.indexWhere((s) => s.id == currentSpinner!.id);
+              final updatedSpinner = currentSpinner!.copyWith(showPercentages: value);
+              spinners[index] = updatedSpinner;
+              currentSpinner = updatedSpinner;
+              _saveSpinners();
+            });
+          },
+        ),
+        const Divider(),
+        SwitchListTile(
+          title: const Text('Dynamic Weight Scaling'),
+          subtitle: const Text('Automatically adjust weights after each spin'),
+          value: currentSpinner!.dynamicWeightScaling,
+          onChanged: (value) {
+            setState(() {
+              final index = spinners.indexWhere((s) => s.id == currentSpinner!.id);
+              final updatedSpinner = currentSpinner!.copyWith(dynamicWeightScaling: value);
+              spinners[index] = updatedSpinner;
+              currentSpinner = updatedSpinner;
+              _saveSpinners();
+            });
+          },
+        ),
+        if (currentSpinner!.dynamicWeightScaling)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Selected Item Penalty',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Slider(
+                        value: currentSpinner!.selectedPenalty,
+                        min: 1,
+                        max: 100,
+                        divisions: 99,
+                        label: '${currentSpinner!.selectedPenalty.round()}%',
+                        onChanged: (value) {
+                          setState(() {
+                            final index = spinners.indexWhere((s) => s.id == currentSpinner!.id);
+                            final updatedSpinner = currentSpinner!.copyWith(selectedPenalty: value);
+                            spinners[index] = updatedSpinner;
+                            currentSpinner = updatedSpinner;
+                            _saveSpinners();
+                          });
+                        },
+                      ),
+                    ),
+                    SizedBox(
+                      width: 50,
+                      child: Text(
+                        '${currentSpinner!.selectedPenalty.round()}%',
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ],
+                ),
+                const Text(
+                  'Percentage to reduce selected item\'s weight by (multiplicative)',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        const Divider(),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                final index = spinners.indexWhere((s) => s.id == currentSpinner!.id);
+                final updatedItems = currentSpinner!.items.map((item) => 
+                  SpinnerItem(
+                    id: item.id,
+                    title: item.title,
+                    description: item.description,
+                    enabled: item.enabled,
+                    weight: 1.0, // Store as decimal (1.0 = 100%)
+                  )
+                ).toList();
+                final updatedSpinner = currentSpinner!.copyWith(items: updatedItems);
+                spinners[index] = updatedSpinner;
+                currentSpinner = updatedSpinner;
+                _saveSpinners();
+              });
+            },
+            icon: const Icon(Icons.restore),
+            label: const Text('Reset All Weights'),
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -620,16 +912,44 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
             itemCount: currentSpinner!.items.length,
             itemBuilder: (context, index) {
               final item = currentSpinner!.items[index];
-              return ListTile(
-                title: Text(item.title),
-                subtitle: Text(
-                  item.description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Row(
                   children: [
+                    Checkbox(
+                      value: item.enabled,
+                      onChanged: (value) {
+                        setState(() {
+                          final index = currentSpinner!.items.indexWhere((i) => i.id == item.id);
+                          currentSpinner!.items[index] = SpinnerItem(
+                            id: item.id,
+                            title: item.title,
+                            description: item.description,
+                            enabled: value ?? true,
+                            weight: item.weight,
+                          );
+                        });
+                        _saveSpinners();
+                      },
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        title: Text(
+                          item.title,
+                          style: TextStyle(
+                            color: item.enabled ? null : Theme.of(context).disabledColor,
+                          ),
+                        ),
+                        subtitle: Text(
+                          item.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: item.enabled ? null : Theme.of(context).disabledColor,
+                          ),
+                        ),
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.edit),
                       onPressed: () => _editItem(item),
@@ -693,22 +1013,6 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     );
   }
 
-  void _spin() {
-    if (!isSpinning && currentSpinner!.items.length >= 2) {
-      setState(() {
-        isSpinning = true;
-        selectedIndex = null;
-      });
-      _subscription?.cancel();
-      _subscription = _selected.stream.listen((value) {
-        setState(() {
-          selectedIndex = value;
-        });
-      });
-      _selected.add(Fortune.randomInt(0, currentSpinner!.items.length));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (isLoading || currentSpinner == null) {
@@ -718,6 +1022,9 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
         ),
       );
     }
+
+    final enabledItems = currentSpinner!.items.where((item) => item.enabled).toList();
+    final hasEnoughEnabledItems = enabledItems.length >= 2;
 
     return Scaffold(
       appBar: AppBar(
@@ -821,21 +1128,8 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
         child: Column(
           children: [
             Expanded(
-              child: currentSpinner!.items.length < 2
+              child: hasEnoughEnabledItems
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.warning, size: 48),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Add at least 2 items to spin!',
-                            style: TextStyle(fontSize: 18),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Center(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           final size = min(
@@ -857,13 +1151,14 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                       duration: const Duration(seconds: 1),
                                       curve: Curves.decelerate,
                                     ),
-                                    onFling: _spin,
+                                    onFling: hasEnoughEnabledItems ? _spin : null,
                                     onAnimationEnd: () {
                                       setState(() {
                                         isSpinning = false;
                                       });
                                       if (selectedIndex != null) {
-                                        _showItemDetails(currentSpinner!.items[selectedIndex!]);
+                                        final actualIndex = selectedIndex! % enabledItems.length;
+                                        _showItemDetails(enabledItems[actualIndex]);
                                       }
                                     },
                                     styleStrategy: UniformStyleStrategy(
@@ -872,7 +1167,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                     ),
                                     indicators: [
                                       FortuneIndicator(
-                                        alignment: Alignment(0, -1.04),  
+                                        alignment: const Alignment(0, -1.04),
                                         child: SizedBox(
                                           width: 20,
                                           height: 30,
@@ -888,7 +1183,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                         ),
                                       ),
                                     ],
-                                    items: currentSpinner!.items
+                                    items: enabledItems
                                         .asMap()
                                         .entries
                                         .map((entry) {
@@ -903,16 +1198,30 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                             ),
                                             child: Padding(
                                               padding: const EdgeInsets.symmetric(vertical: 15.0, horizontal: 20.0),
-                                              child: Text(
-                                                item.title,
-                                                style: TextStyle(
-                                                  fontSize: currentSpinner!.style.fontSize,
-                                                  fontWeight: currentSpinner!.style.fontWeight,
-                                                  color: currentSpinner!.style.textColor,
-                                                ),
-                                                textAlign: TextAlign.center,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    item.title,
+                                                    style: TextStyle(
+                                                      fontSize: currentSpinner!.style.fontSize,
+                                                      fontWeight: currentSpinner!.style.fontWeight,
+                                                      color: currentSpinner!.style.textColor,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                  if (currentSpinner!.showPercentages)
+                                                    Text(
+                                                      '${(item.weight * 100).toStringAsFixed(1)}%',
+                                                      style: TextStyle(
+                                                        fontSize: currentSpinner!.style.fontSize * 0.8,
+                                                        color: currentSpinner!.style.textColor,
+                                                      ),
+                                                      textAlign: TextAlign.center,
+                                                    ),
+                                                ],
                                               ),
                                             ),
                                           );
@@ -950,7 +1259,7 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                                         child: Icon(
                                           Icons.play_arrow,
                                           size: 30,
-                                          color: isSpinning 
+                                          color: isSpinning
                                             ? currentSpinner!.style.textColor.withOpacity(0.5)
                                             : currentSpinner!.style.textColor,
                                         ),
@@ -962,6 +1271,19 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                             ),
                           );
                         },
+                      ),
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.warning, size: 48),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Add at least 2 enabled items to spin!',
+                            style: TextStyle(fontSize: 18),
+                          ),
+                        ],
                       ),
                     ),
             ),
@@ -984,7 +1306,7 @@ class TrianglePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final path = Path();
-    path.moveTo(size.width / 2, size.height / 0.9);  
+    path.moveTo(size.width / 2, size.height / 0.9);
     path.lineTo(0, 0);                         // Line to top-left
     path.lineTo(size.width, 0);                // Line to top-right
     path.close();
@@ -1008,7 +1330,7 @@ class TrianglePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(TrianglePainter oldDelegate) => 
-    color != oldDelegate.color || 
+  bool shouldRepaint(TrianglePainter oldDelegate) =>
+    color != oldDelegate.color ||
     !listEquals(gradientColors, oldDelegate.gradientColors);
 }
