@@ -134,6 +134,76 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
       fontSize: 16,
       fontWeight: FontWeight.bold,
     ),
+    SpinnerStyle(
+      id: 'neon',
+      name: 'Neon',
+      colors: [
+        const Color(0xFFFF1744), // Neon red
+        const Color(0xFF00E676), // Neon green
+        const Color(0xFF00B0FF), // Neon blue
+        const Color(0xFFFFEA00), // Neon yellow
+        const Color(0xFFD500F9), // Neon purple
+      ],
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'desert',
+      name: 'Desert',
+      colors: [
+        const Color(0xFFBF360C), // Terracotta
+        const Color(0xFFE65100), // Rust
+        const Color(0xFFF57F17), // Sand
+        const Color(0xFFFFB74D), // Light sand
+        const Color(0xFFFFE0B2), // Pale sand
+      ],
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'galaxy',
+      name: 'Galaxy',
+      colors: [
+        const Color(0xFF311B92), // Deep purple
+        const Color(0xFF6A1B9A), // Space purple
+        const Color(0xFF1A237E), // Deep blue
+        const Color(0xFF283593), // Space blue
+        const Color(0xFF880E4F), // Deep pink
+      ],
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'autumn',
+      name: 'Autumn',
+      colors: [
+        const Color(0xFFC62828), // Deep red
+        const Color(0xFFEF6C00), // Orange
+        const Color(0xFFF9A825), // Golden yellow
+        const Color(0xFF795548), // Brown
+        const Color(0xFF4E342E), // Dark brown
+      ],
+      textColor: Colors.white,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
+    SpinnerStyle(
+      id: 'pastel',
+      name: 'Pastel',
+      colors: [
+        const Color(0xFFFFCDD2), // Pastel pink
+        const Color(0xFFB2EBF2), // Pastel blue
+        const Color(0xFFC8E6C9), // Pastel green
+        const Color(0xFFFFF9C4), // Pastel yellow
+        const Color(0xFFE1BEE7), // Pastel purple
+      ],
+      textColor: Colors.black, // Dark text for better contrast on light colors
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+    ),
   ];
 
   int _getWeightedRandomIndex(List<SpinnerItem> items) {
