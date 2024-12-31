@@ -1260,7 +1260,9 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
             },
           ),
         ),
-        title: Text(currentSpinner!.name),
+        title: Center(
+          child: Text(currentSpinner!.name),
+        ),
         actions: [
           Builder(
             builder: (context) => IconButton(
