@@ -795,21 +795,6 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
     });
   }
 
-  void _toggleItem(String itemId) {
-    setState(() {
-      final index = currentSpinner!.items.indexWhere((i) => i.id == itemId);
-      final item = currentSpinner!.items[index];
-      currentSpinner!.items[index] = SpinnerItem(
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        enabled: !item.enabled,
-        weight: item.weight,
-      );
-    });
-    _saveSpinners();
-  }
-
   Widget _buildLeftDrawer() {
     final colors = currentSpinner?.style.colors ?? [Colors.blue, Colors.lightBlue];
     final gradientColors = [
@@ -871,8 +856,6 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
                 final spinner = spinners[index];
                 return ListTile(
                   selected: currentSpinner!.id == spinner.id,
-                  visualDensity: VisualDensity.compact,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0),
                   leading: SvgPicture.asset(
                     'assets/lottery.svg',
                     height: 24,
@@ -1117,81 +1100,66 @@ class _SpinnerScreenState extends State<SpinnerScreen> {
           ),
         ),
         Expanded(
-          child: _buildSpinnerItemList(),
+          child: ListView.builder(
+            itemCount: currentSpinner!.items.length,
+            itemBuilder: (context, index) {
+              final item = currentSpinner!.items[index];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: item.enabled,
+                      onChanged: (value) {
+                        setState(() {
+                          final index = currentSpinner!.items.indexWhere((i) => i.id == item.id);
+                          currentSpinner!.items[index] = SpinnerItem(
+                            id: item.id,
+                            title: item.title,
+                            description: item.description,
+                            enabled: value ?? true,
+                            weight: item.weight,
+                          );
+                        });
+                        _saveSpinners();
+                      },
+                    ),
+                    Expanded(
+                      child: ListTile(
+                        title: Text(
+                          item.title,
+                          style: TextStyle(
+                            color: item.enabled ? null : Theme.of(context).disabledColor,
+                          ),
+                        ),
+                        subtitle: Text(
+                          item.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: item.enabled ? null : Theme.of(context).disabledColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => _editItem(item),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: currentSpinner!.items.length <= 2
+                          ? null
+                          : () => _deleteItem(item.id),
+                      color: currentSpinner!.items.length <= 2 ? Colors.grey : Colors.red,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSpinnerItemList() {
-    return ListView.builder(
-      itemCount: currentSpinner!.items.length,
-      padding: EdgeInsets.zero,
-      itemBuilder: (context, index) {
-        final item = currentSpinner!.items[index];
-        return ListTile(
-          visualDensity: VisualDensity.compact,
-          contentPadding: const EdgeInsets.fromLTRB(16.0, 0.0, 0.0, 0.0),
-          leading: Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: item.enabled 
-                  ? Colors.green 
-                  : Colors.grey.withOpacity(0.5),
-            ),
-          ),
-          title: Text(
-            item.title,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 14,
-              color: item.enabled 
-                  ? null 
-                  : Theme.of(context).disabledColor,
-            ),
-          ),
-          subtitle: Text(
-            item.description,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 12,
-              color: item.enabled 
-                  ? null 
-                  : Theme.of(context).disabledColor,
-            ),
-          ),
-          trailing: Container(
-            width: 80, // Reduced width for tighter spacing
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 24),
-                  onPressed: () => _editItem(item),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 24),
-                  onPressed: currentSpinner!.items.length <= 2
-                      ? null
-                      : () => _deleteItem(item.id),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  visualDensity: VisualDensity.compact,
-                  color: currentSpinner!.items.length <= 2 ? Colors.grey : Colors.red,
-                ),
-              ],
-            ),
-          ),
-          onTap: () => _toggleItem(item.id),
-        );
-      },
     );
   }
 
